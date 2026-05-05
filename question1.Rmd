@@ -1,0 +1,67 @@
+---
+title: "homeassignment"
+author: "Clara Font and Anna Casas"
+date: "2026-04-30"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## RNAseq of the Flor yeast
+
+# QUESTION 1: Load, adapt the data and create metadata
+
+### LOADING THE DATA
+
+``` {r}
+rep1 <- read.csv(file.path("/home/clarafontc/homeassignment/", "rep1.csv"), header=TRUE)
+rep2 <- read.csv(file.path("/home/clarafontc/homeassignment/", "rep2.csv"), header=TRUE)
+rep3 <- read.csv(file.path("/home/clarafontc/homeassignment/", "rep3.csv"), header=TRUE)
+rep4 <- read.csv(file.path("/home/clarafontc/homeassignment/", "rep4.csv"), header=TRUE)
+
+```
+
+### MERGE THE DATASETS
+``` {r}
+#Merge datasets (without the "X" column so they are not duplicated)
+merged_df <- cbind(rep1, rep2[,-1], rep3[,-1], rep4[,-1])
+
+#Define the gene names as row names (I tried without defining and then they are "lost" during transposition)
+rownames(merged_df) <- merged_df$X
+merged_df$X <- NULL  #Remove the now redundant column
+
+#Transposing (having the dataframe as it was asked in the question 1)
+final_df <- as.data.frame(t(merged_df))
+
+#Check dimensions
+dim(final_df)
+```
+
+After trying different versions, I think I have the dataframe as expected and in a good way to work on it in the next questions and exercises. 
+
+```{r cars}
+str(final_df)
+View(final_df)
+#Columns of the tables have to represent variables (genes) and rows have to be samples.
+```
+
+### METADATA
+A metadata dataframe explains properties from the original dataframe (what each column and row actually represents). In the case of our dataframe, this information can be extracted from the names of each sample (ex: A.t1_rep1).
+
+```{r}
+#get the sample names from the dataframe
+sample_names <- rownames(final_df)
+
+#break the names into parts (using strsplit)
+
+metadata <- data.frame(
+  Sample = sample_names,  
+  SherryWine = substr(sample_names, 1, 1),  #extracting A or B - the first character regarding the type of wine 
+  Time = gsub(".*\\.(.*)_.*", "\\1", sample_names), #extracting t1, t2, t3... - between . and _ in the sample name
+  Replicate = gsub(".*_", "", sample_names) #extracting replicate number (after _)
+) 
+
+View(metadata)
+```
