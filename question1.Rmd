@@ -1,5 +1,5 @@
 ---
-title: "homeassignment"
+title: "RNAseq of the Flor yeast"
 author: "Clara Font and Anna Casas"
 date: "2026-04-30"
 output: html_document
@@ -9,9 +9,7 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## RNAseq of the Flor yeast
-
-# QUESTION 1: Load, adapt the data and create metadata
+## QUESTION 1: Load, adapt the data and create metadata
 
 ### LOADING THE DATA
 
@@ -42,8 +40,8 @@ dim(final_df)
 After trying different versions, I think I have the dataframe as expected and in a good way to work on it in the next questions and exercises. 
 
 ```{r cars}
-str(final_df)
-View(final_df)
+#str(final_df)
+#View(final_df)
 #Columns of the tables have to represent variables (genes) and rows have to be samples.
 ```
 
@@ -55,7 +53,6 @@ A metadata dataframe explains properties from the original dataframe (what each 
 sample_names <- rownames(final_df)
 
 #break the names into parts (using strsplit)
-
 metadata <- data.frame(
   Sample = sample_names,  
   SherryWine = substr(sample_names, 1, 1),  #extracting A or B - the first character regarding the type of wine 
@@ -63,5 +60,5 @@ metadata <- data.frame(
   Replicate = gsub(".*_", "", sample_names) #extracting replicate number (after _)
 ) 
 
-View(metadata)
+#View(metadata)
 ```
