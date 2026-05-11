@@ -32,15 +32,20 @@ merged_df$X <- NULL  #Remove the now redundant column
 
 #Transposing (having the dataframe as it was asked in the question 1)
 final_df <- as.data.frame(t(merged_df))
-
 #Check dimensions
-dim(final_df)
+dim(final_df) #correct, 48 samples as explained in the introduction of the project and +6000 genes
+
+#since PCA works only with numeric data I make sure that the dataframe is prepared for it. 
+final_df <- data.frame(lapply(final_df, as.numeric))
+rownames(final_df) <- rownames(t(merged_df))
+
+
 ```
 
 After trying different versions, I think I have the dataframe as expected and in a good way to work on it in the next questions and exercises. 
 
 ```{r cars}
-#str(final_df)
+#str(final_df) (to check that all the variables are numeric)
 #View(final_df)
 #Columns of the tables have to represent variables (genes) and rows have to be samples.
 ```
@@ -62,3 +67,47 @@ metadata <- data.frame(
 
 #View(metadata)
 ```
+
+## QUESTION 2: PCA representation
+
+Performing a PCA will allow us to convert a high dimension dataset into a lesser dimension dataset, but still ensuring that the information it provides is similar and useful. 
+
+
+```{r}
+#str(final_df)
+head(final_df[, 1:5])
+
+#create the PCA 
+pca1 <- stats::prcomp(final_df, scale=TRUE)
+
+pca2<- stats::prcomp(final_df, scale=FALSE)
+
+norm_df <-final_df/rowSums(final_df)
+pca3 <- stats::prcomp(norm_df, scale=TRUE)
+
+#plotting the 3 dataframes after the PCA's
+library(ggplot2)
+library(ggfortify)
+
+ggplot2::autoplot(pca1, data = metadata, colour = 'SherryWine') +
+  ggplot2::theme_minimal() +
+  ggplot2::ggtitle("PCA scaled")
+
+ggplot2::autoplot(pca2, data = metadata, colour = 'SherryWine') +
+  ggplot2::theme_minimal() +
+  ggplot2::ggtitle("PCA non-scaled")
+
+ggplot2::autoplot(pca3, data = metadata, colour = 'SherryWine') +
+  ggplot2::theme_minimal() +
+  ggplot2::ggtitle("PCA normalized")
+
+log_df <- log2(final_df + 1)
+pca4 <- stats::prcomp(log_df, scale=TRUE, na.rm=TRUE)
+```
+
+The normalized plot looks very strange, with 2 independent clusters and a sample (outlier). We do not really understand why does it look like that. 
+
+
+
+
+
