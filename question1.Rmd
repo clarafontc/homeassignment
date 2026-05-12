@@ -24,20 +24,20 @@ rep4 <- read.csv(file.path("/home/clarafontc/homeassignment/", "rep4.csv"), head
 ### MERGE THE DATASETS
 ``` {r}
 #Merge datasets (without the "X" column so they are not duplicated)
-merged_df <- cbind(rep1, rep2[,-1], rep3[,-1], rep4[,-1])
+merged_df1 <- cbind(rep1, rep2[,-1], rep3[,-1], rep4[,-1])
 
 #Define the gene names as row names (I tried without defining and then they are "lost" during transposition)
-rownames(merged_df) <- merged_df$X
-merged_df$X <- NULL  #Remove the now redundant column
+rownames(merged_df1) <- merged_df1$X
+merged_df1$X <- NULL  #Remove the now redundant column
 
 #Transposing (having the dataframe as it was asked in the question 1)
-final_df <- as.data.frame(t(merged_df))
+final_df1 <- as.data.frame(t(merged_df1))
 #Check dimensions
-dim(final_df) #correct, 48 samples as explained in the introduction of the project and +6000 genes
+dim(final_df1) #correct, 48 samples as explained in the introduction of the project and +6000 genes
 
 #since PCA works only with numeric data I make sure that the dataframe is prepared for it. 
-final_df <- data.frame(lapply(final_df, as.numeric))
-rownames(final_df) <- rownames(t(merged_df))
+final_df1 <- data.frame(lapply(final_df1, as.numeric))
+rownames(final_df1) <- rownames(t(merged_df1))
 
 
 ```
@@ -45,8 +45,8 @@ rownames(final_df) <- rownames(t(merged_df))
 After trying different versions, I think I have the dataframe as expected and in a good way to work on it in the next questions and exercises. 
 
 ```{r cars}
-#str(final_df) (to check that all the variables are numeric)
-#View(final_df)
+#str(final_df1) (to check that all the variables are numeric)
+#View(final_df1)
 #Columns of the tables have to represent variables (genes) and rows have to be samples.
 ```
 
@@ -55,7 +55,7 @@ A metadata dataframe explains properties from the original dataframe (what each 
 
 ```{r}
 #get the sample names from the dataframe
-sample_names <- rownames(final_df)
+sample_names <- rownames(final_df1)
 
 #break the names into parts (using strsplit)
 metadata <- data.frame(
@@ -70,19 +70,21 @@ metadata <- data.frame(
 
 ## QUESTION 2: PCA representation
 
+### DOING THE PCA'S
+
 Performing a PCA will allow us to convert a high dimension dataset into a lesser dimension dataset, but still ensuring that the information it provides is similar and useful. 
 
 
 ```{r}
 #str(final_df)
-head(final_df[, 1:5])
+head(final_df1[, 1:5])
 
 #create the PCA 
-pca1 <- stats::prcomp(final_df, scale=TRUE)
+pca1 <- stats::prcomp(final_df1, scale=TRUE)
 
-pca2<- stats::prcomp(final_df, scale=FALSE)
+pca2<- stats::prcomp(final_df1, scale=FALSE)
 
-norm_df <-final_df/rowSums(final_df)
+norm_df <-final_df1/rowSums(final_df1)
 pca3 <- stats::prcomp(norm_df, scale=TRUE)
 
 #plotting the 3 dataframes after the PCA's
@@ -101,12 +103,72 @@ ggplot2::autoplot(pca3, data = metadata, colour = 'SherryWine') +
   ggplot2::theme_minimal() +
   ggplot2::ggtitle("PCA normalized")
 
-log_df <- log2(final_df + 1)
-pca4 <- stats::prcomp(log_df, scale=TRUE, na.rm=TRUE)
+autoplot(pca3, data=metadata, label=TRUE)
+#using the plot created by this line and using label=TRUE I can see which is the outlier
+
 ```
 
-The normalized plot looks very strange, with 2 independent clusters and a sample (outlier). We do not really understand why does it look like that. 
+The normalized plot looks very strange, with 2 independent clusters and a sample (outlier). There is a dominant batch effect in all the graphs.
+By using the "autoplot" line I have been able to easily identify which is the outlier in the previous plot (the normalized one). The assignment says "A sample produced unusual results but was not discarded.", so I guess it is our choice whether to discard it or not. We will see this sample with more detail to make a decision. 
 
+
+### CHECK OF THE OUTLIER
+```{r}
+#View(rep3)
+
+total_counts <- colSums(merged_df1[,-1])
+barplot(
+  total_counts,
+  las = 2,
+  main = "Checking the outlier",
+  ylab = "Total counts"
+)
+
+```
+
+This simple graph helps to understand the dimension of the outlier and its difference with the rest of values. That sample strongly separates from all others and doesn't cluster with the replicates (seen in PCA graph of normalized data). This can be due to a technical issue, perhaps a sequencing error, a mapping failure,... but we discard that it might be due to biological factors. That's why we cohclude that the optimal choice is to leave Repetition 3 of the first time from experiment B (B.t1_rep3) out of the study. 
+
+
+```{r}
+#removing the outlier from the dataframes
+
+merged_df2 <- merged_df1[, colnames(merged_df1) != "B.t1_rep3"]
+final_df2 <- final_df1[rownames(final_df1) != "B.t1_rep3", ]
+norm_df2 <- norm_df[rownames(norm_df) != "B.t1_rep3", ]
+metadata <- metadata[metadata$Sample!="B.t1_rep3", ]
+
+#performing the normalized pca again
+pca4 <- stats::prcomp(norm_df2, scale=TRUE)
+
+ggplot2::autoplot(pca4, data = metadata, colour = 'SherryWine') +
+  ggplot2::theme_minimal() +
+  ggplot2::ggtitle("PCA normalized")
+```
+We can see how the data appears less clustered since the PCA has worked properly with the normalized data. Removing the outlier has been a correct choice. 
+
+### BATCH EFFECT
+The PCA graphs have been colored by wine type and batch effect has been observed. To keep on studying the batch effect we will plot everything but coloring it by other parameters (Replicates and Time) and using PCA with the new dataframes (without the outlier). We will use scale=TRUE since we think is the best for this kind of studies.
+
+```{r}
+pca5 <- stats::prcomp(final_df2, scale=TRUE)
+
+ggplot2::autoplot(pca5, data = metadata, colour = 'Replicate') +
+  ggplot2::theme_minimal() +
+  ggplot2::ggtitle("PCA scaled")
+
+ggplot2::autoplot(pca5, data = metadata, colour = 'Time') +
+  ggplot2::theme_minimal() +
+  ggplot2::ggtitle("PCA scaled")
+
+ggplot2::autoplot(pca4, data = metadata, colour = 'Replicate') +
+  ggplot2::theme_minimal() +
+  ggplot2::ggtitle("PCA scaled")
+
+ggplot2::autoplot(pca4, data = metadata, colour = 'Time') +
+  ggplot2::theme_minimal() +
+  ggplot2::ggtitle("PCA normalized")
+
+```
 
 
 
