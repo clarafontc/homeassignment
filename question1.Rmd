@@ -23,7 +23,7 @@ rep4 <- read.csv(file.path("/home/clarafontc/homeassignment/", "rep4.csv"), head
 
 ### MERGE THE DATASETS
 ``` {r}
-#Merge datasets (without the "X" column so they are not duplicated)
+#Merge datasets (without the "X" column so they are not duplicated) (we apply directly cbind since we have seen that samples appear in the same order in all the datasets)
 merged_df1 <- cbind(rep1, rep2[,-1], rep3[,-1], rep4[,-1])
 
 #Define the gene names as row names (I tried without defining and then they are "lost" during transposition)
@@ -108,7 +108,7 @@ autoplot(pca3, data=metadata, label=TRUE)
 
 ```
 
-The normalized plot looks very strange, with 2 independent clusters and a sample (outlier). There is a dominant batch effect in all the graphs.
+The normalized plot looks very strange, with 2 independent clusters and a sample (outlier). Possible batch effect in the data will be discussed later.
 By using the "autoplot" line I have been able to easily identify which is the outlier in the previous plot (the normalized one). The assignment says "A sample produced unusual results but was not discarded.", so I guess it is our choice whether to discard it or not. We will see this sample with more detail to make a decision. 
 
 
@@ -117,6 +117,7 @@ By using the "autoplot" line I have been able to easily identify which is the ou
 #View(rep3)
 
 total_counts <- colSums(merged_df1[,-1])
+
 barplot(
   total_counts,
   las = 2,
@@ -126,11 +127,11 @@ barplot(
 
 ```
 
-This simple graph helps to understand the dimension of the outlier and its difference with the rest of values. That sample strongly separates from all others and doesn't cluster with the replicates (seen in PCA graph of normalized data). This can be due to a technical issue, perhaps a sequencing error, a mapping failure,... but we discard that it might be due to biological factors. That's why we cohclude that the optimal choice is to leave Repetition 3 of the first time from experiment B (B.t1_rep3) out of the study. 
+This simple graph helps to understand the dimension of the outlier and its difference with the rest of values. That sample strongly separates from all others and doesn't cluster with the replicates (seen in PCA graph of normalized data). This can be due to a technical issue, perhaps a sequencing error, a mapping failure,... but we discard that it might be due to biological factors. That's why we conclude that the optimal choice is to leave Repetition 3 of the first time from experiment B (B.t1_rep3) out of the study. 
 
 
 ```{r}
-#removing the outlier from the dataframes
+#new dataframes without the outlier
 
 merged_df2 <- merged_df1[, colnames(merged_df1) != "B.t1_rep3"]
 final_df2 <- final_df1[rownames(final_df1) != "B.t1_rep3", ]
@@ -142,34 +143,65 @@ pca4 <- stats::prcomp(norm_df2, scale=TRUE)
 
 ggplot2::autoplot(pca4, data = metadata, colour = 'SherryWine') +
   ggplot2::theme_minimal() +
-  ggplot2::ggtitle("PCA normalized")
+  ggplot2::ggtitle("PCA - normalized data - by Wine Type")
 ```
 We can see how the data appears less clustered since the PCA has worked properly with the normalized data. Removing the outlier has been a correct choice. 
 
 ### BATCH EFFECT
-The PCA graphs have been colored by wine type and batch effect has been observed. To keep on studying the batch effect we will plot everything but coloring it by other parameters (Replicates and Time) and using PCA with the new dataframes (without the outlier). We will use scale=TRUE since we think is the best for this kind of studies.
+
+The PCA graphs have been colored by wine type and batch effect will now be evaluated To keep on studying the batch effect we will plot everything but coloring it by other parameters (Replicates and Time) and using PCA with the new dataframes (without the outlier). We will use scale=TRUE since we think is the best for this kind of studies.
 
 ```{r}
-pca5 <- stats::prcomp(final_df2, scale=TRUE)
-
-ggplot2::autoplot(pca5, data = metadata, colour = 'Replicate') +
-  ggplot2::theme_minimal() +
-  ggplot2::ggtitle("PCA scaled")
-
-ggplot2::autoplot(pca5, data = metadata, colour = 'Time') +
-  ggplot2::theme_minimal() +
-  ggplot2::ggtitle("PCA scaled")
+#performing the graphs 
 
 ggplot2::autoplot(pca4, data = metadata, colour = 'Replicate') +
   ggplot2::theme_minimal() +
-  ggplot2::ggtitle("PCA scaled")
+  ggplot2::ggtitle("PCA - normalized data - by Replicate")
 
 ggplot2::autoplot(pca4, data = metadata, colour = 'Time') +
   ggplot2::theme_minimal() +
-  ggplot2::ggtitle("PCA normalized")
+  ggplot2::ggtitle("PCA - normalized data - by Time")
+
+```
+Starting by the graph colored by Wine Type, we can see that PC1 captures most of the variance in your dataset (interpreting the x-axis). Data is splitted along the x axis (negative part, Wine A and positive part Wine B). This implies that the most important difference in gene expression across the samples is given by the differences in strains of yeast between the two wine kinds (2 different strains of Saccharomyces cerevisiae for 2 different sherry wine products they offer), not due to a batch effect. 
+
+Following by the graph colored by Replicate, it shows different replicates overlapping as different subgroups. This means that batch effect doesn't cause the variance, so there have not been significant technical problems while conducting the transcriptome analysis. 
+
+The last graph to see carefully is the one colored by Time. We can see that the samples are distributed by color along the y-axis (PC2), which explains a small percentage of the variance in the data. Taking into account that flor yeast velum is adaptative and changes over time (wine aging), it makes sense that samples have variance along the different times they have been analyzed. 
+
+### CORRELATION OF AXIS WITH EXPRESSION
+
+```{r}
+
+#creating the dataframe of the pca and the metadata to plot and see correlations. 
+pca_scores <- as.data.frame(pca4$x)
+pca_scores <- cbind(pca_scores, metadata)
+
+#plotting using PC1 (the one that explains most of the variance)
+ggplot(pca_scores, aes(x = SherryWine, y = PC1, color = SherryWine)) +
+  geom_jitter() +
+  theme_minimal() +
+  labs(title = "PC1 - Wine Type")
+
+ggplot(pca_scores, aes(x = Time, y = PC1, color=SherryWine)) +
+  geom_jitter() +
+  theme_minimal() +
+  labs(title = "PC1 - Time")
+
+#After trying many graphs (using PC1, PC2 and even PC3, I think the one that shows a correlation as important as to appear here is PC2 with Time).
+ggplot(pca_scores, aes(x = Time, y = PC2, color = SherryWine)) +
+  geom_jitter() +
+  theme_minimal()+
+  labs(title="PC2 - Time")
+
+ggplot(pca_scores, aes(x = Replicate, y = PC1, color = SherryWine)) +
+  geom_jitter() +
+  theme_minimal()+
+  labs(title="PC1 - Replicate")
 
 ```
 
-
-
+PC1 explains most of the variance (65.1%) and as we can see it clearly shows separation between the 2 types (A and B), which reafirms that the transcriptomic differences between strains of Saccharomyces cerevisiae are the origin of the variation. 
+The variance explained by PC1 when it comes to Time is clearly shown in the graph, where samples appear differently distributed along the y-axis (PC1) depending on the Wine Type they belong to. PC2 (which explains a much smaller part of the variance, a 6.98%) shows a weak negative correlation with the time the samples were taken. 
+Finally, the graph between PC1 and Replicates looks pretty similar to the one between this PC and Time. Samples differ on the y-axis depending on the Wine Type. This explains once again that most of the variance is explained by the biological difference between the 2 flor yeast strains rather than the effects Time or Replicates might have. No clusters are shown, which once again confirms that there is no batch effect. 
 
