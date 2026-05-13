@@ -2,12 +2,74 @@
 title: "RNAseq of the Flor yeast"
 author: "Clara Font and Anna Casas"
 date: "2026-04-30"
-output: html_document
+output: 
+  html_document: 
+    theme: yeti
+    highlight: tango
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE, fig.width = 6, fig.height = 4, fig.align = "center")
 ```
+
+
+```{=html}
+
+<style>
+.justify {
+  text-align: justify;
+}
+
+h1.title {
+  color: #222222;
+  letter-spacing: 4px;
+}
+
+.fig {width: 50%}
+
+.center {
+  text-align: center;
+}
+
+.alternative_box {
+  padding: 1em;
+  background: white;
+  color: black;
+  border: 2px solid darkturquoise;
+  border-radius: 10px;
+  margin-bottom: 10px;
+}
+
+.question_box {
+  padding: 1em;
+  background: white;
+  color: black;
+  border: 2px solid plum;
+  border-radius: 10px;
+  margin-bottom: 10px;
+}
+
+</style>
+```
+
+
+:::{.question_box}
+
+**INTRODUCTION: **
+
+You are a bioinformatician working for a company that provides scientific, statistical and bioinformatic consulting services. A customer from a very important sherry wine trade company wants to **understand the differences between strains of Saccharomyces cerevisiae for different sherry wines products that they elaborate**.
+
+As you may know, flor strains of this **yeast are principal microbial agents responsible for biological wine aging used for production of wines**. The flor yeast velum formed on the surface of fortified fermented must is a major adaptive and technological characteristic of flor yeasts that helps them to withstanding stressful winemaking conditions and ensures specific biochemical and sensory oxidative alterations typical for sherry wines.
+The user produces two types of sherry wines (A and B), with different flavors, alcohol percentage and color. They are interested in deciphering if the differences between sherry wines classes are due to genetic differences in yeast or any other biochemical process that has not been controlled.
+We recommended to the user applying **RNAseq technology for transcriptome analysis of these two industrial flor yeasts strains at different steps of velum development (6 different times) and multiple replicates (4 replicates)**. We ended up with 48 samples analyzed.
+
+RNAseq reads were automatically quality checked, trimmed and filtered following default settings of packages such as fastqc and trimmomatic included in a RNA seq bioinformatics pipeline (https://github.com/HCGB-IGTP/RNA_seq_pipe). During the quality check, a sample produced unusual results but was not discarded. Please consider this and discard it if necessary after the normalization process. 
+
+Mapping to the reference genome and feature count of genes was produced using Hisat2 and featureCounts packages, also included in the previous pipeline mentioned. For each of the replicates, a gene count matrix was generated and saved as a comma separated file within the data folder provided. Metadata can be extracted from the names of the samples.
+
+Your **goal** in this project is to decipher by applying dimension reduction techniques if there are genetic differences between sherry wine yeast strains that might be reflected in the wine tasting.
+:::
+
 
 ## QUESTION 1: Load, adapt the data and create metadata
 
@@ -23,7 +85,8 @@ rep4 <- read.csv(file.path("/home/clarafontc/homeassignment/", "rep4.csv"), head
 
 ### MERGE THE DATASETS
 ``` {r}
-#Merge datasets (without the "X" column so they are not duplicated) (we apply directly cbind since we have seen that samples appear in the same order in all the datasets)
+#Merge datasets (without the "X" column so they are not duplicated) 
+#(we apply directly cbind since we have seen that samples appear in the same order in all the datasets)
 merged_df1 <- cbind(rep1, rep2[,-1], rep3[,-1], rep4[,-1])
 
 #Define the gene names as row names (I tried without defining and then they are "lost" during transposition)
@@ -75,7 +138,7 @@ metadata <- data.frame(
 Performing a PCA will allow us to convert a high dimension dataset into a lesser dimension dataset, but still ensuring that the information it provides is similar and useful. 
 
 
-```{r}
+```{r, warning=FALSE, message=FALSE}
 #str(final_df)
 head(final_df1[, 1:5])
 
@@ -99,20 +162,21 @@ ggplot2::autoplot(pca2, data = metadata, colour = 'SherryWine') +
   ggplot2::theme_minimal() +
   ggplot2::ggtitle("PCA non-scaled")
 
-ggplot2::autoplot(pca3, data = metadata, colour = 'SherryWine') +
+plotnorm <- ggplot2::autoplot(pca3, data = metadata, colour = 'SherryWine') +
   ggplot2::theme_minimal() +
   ggplot2::ggtitle("PCA normalized")
 
+library(plotly)
+ggplotly(plotnorm)
+
 autoplot(pca3, data=metadata, label=TRUE)
-#using the plot created by this line and using label=TRUE I can see which is the outlier
 
 ```
 
 The normalized plot looks very strange, with 2 independent clusters and a sample (outlier). Possible batch effect in the data will be discussed later.
-By using the "autoplot" line I have been able to easily identify which is the outlier in the previous plot (the normalized one). The assignment says "A sample produced unusual results but was not discarded.", so I guess it is our choice whether to discard it or not. We will see this sample with more detail to make a decision. 
+By using the "autoplot" line (using label=TRUE) I have been able to easily identify which is the outlier in the previous plot (the normalized one). The assignment says "A sample produced unusual results but was not discarded.", so I guess it is our choice whether to discard it or not. We will see this sample with more detail to make a decision. 
 
-
-### CHECK OF THE OUTLIER
+### CHECKING THE OUTLIER
 ```{r}
 #View(rep3)
 
@@ -145,6 +209,7 @@ ggplot2::autoplot(pca4, data = metadata, colour = 'SherryWine') +
   ggplot2::theme_minimal() +
   ggplot2::ggtitle("PCA - normalized data - by Wine Type")
 ```
+
 We can see how the data appears less clustered since the PCA has worked properly with the normalized data. Removing the outlier has been a correct choice. 
 
 ### BATCH EFFECT
@@ -163,6 +228,7 @@ ggplot2::autoplot(pca4, data = metadata, colour = 'Time') +
   ggplot2::ggtitle("PCA - normalized data - by Time")
 
 ```
+
 Starting by the graph colored by Wine Type, we can see that PC1 captures most of the variance in your dataset (interpreting the x-axis). Data is splitted along the x axis (negative part, Wine A and positive part Wine B). This implies that the most important difference in gene expression across the samples is given by the differences in strains of yeast between the two wine kinds (2 different strains of Saccharomyces cerevisiae for 2 different sherry wine products they offer), not due to a batch effect. 
 
 Following by the graph colored by Replicate, it shows different replicates overlapping as different subgroups. This means that batch effect doesn't cause the variance, so there have not been significant technical problems while conducting the transcriptome analysis. 
@@ -202,6 +268,61 @@ ggplot(pca_scores, aes(x = Replicate, y = PC1, color = SherryWine)) +
 ```
 
 PC1 explains most of the variance (65.1%) and as we can see it clearly shows separation between the 2 types (A and B), which reafirms that the transcriptomic differences between strains of Saccharomyces cerevisiae are the origin of the variation. 
+
 The variance explained by PC1 when it comes to Time is clearly shown in the graph, where samples appear differently distributed along the y-axis (PC1) depending on the Wine Type they belong to. PC2 (which explains a much smaller part of the variance, a 6.98%) shows a weak negative correlation with the time the samples were taken. 
+
 Finally, the graph between PC1 and Replicates looks pretty similar to the one between this PC and Time. Samples differ on the y-axis depending on the Wine Type. This explains once again that most of the variance is explained by the biological difference between the 2 flor yeast strains rather than the effects Time or Replicates might have. No clusters are shown, which once again confirms that there is no batch effect. 
+
+
+## QUESTION 3: tSNE representation
+
+### REPRESENT THE DATA WITH A TSNE
+
+```{r}
+
+set.seed(42)
+library("Rtsne")
+tsne1 <-Rtsne(final_df2, perplexity=15)
+tsne2 <- Rtsne(norm_df2, perplexity=15)
+```
+
+He fet els gràfics però s'han de comentar (batch effect i diferència entre gràfic normalitzat i raw data)
+
+```{r}
+plotdata1 <- data.frame(
+  tSNE1 = tsne1$Y[, 1],          
+  tSNE2 = tsne1$Y[, 2],          
+  WineType = metadata$SherryWine,  
+  Time = metadata$Time, 
+  Replicate = metadata$Replicate)
+
+ggplot(plotdata1, aes(x = tSNE1, y = tSNE2, color = Replicate)) +
+  geom_point() + 
+    labs(title = "tSNE plot - raw data",
+       x = "tSNE1",
+       y = "tSNE2") +  theme_minimal() 
+
+ggplot(plotdata1, aes(x = tSNE1, y = tSNE2, color = WineType)) +
+  geom_point() + 
+    labs(title = "tSNE plot - raw data",
+       x = "tSNE1",
+       y = "tSNE2") +  theme_minimal() 
+
+
+plotdata2 <- data.frame(
+  tSNE1 = tsne2$Y[, 1],          
+  tSNE2 = tsne2$Y[, 2],          
+  WineType = metadata$SherryWine,  
+  Time = metadata$Time,
+  Replicate = metadata$Replicate)
+
+ggplot(plotdata2, aes(x = tSNE1, y = tSNE2, color = WineType)) +
+  geom_point() + 
+    labs(title = "tSNE plot - normalized data",
+       x = "tSNE1",
+       y = "tSNE2") +  theme_minimal() 
+
+```
+
+
 
