@@ -5,7 +5,10 @@ date: "2026-04-30"
 output: 
   html_document: 
     theme: yeti
-    highlight: tango
+    highlight: pygments
+    toc: true
+    toc_float: true
+    toc_depth: 3
 ---
 
 ```{r setup, include=FALSE}
@@ -21,8 +24,21 @@ knitr::opts_chunk$set(echo = TRUE, fig.width = 6, fig.height = 4, fig.align = "c
 }
 
 h1.title {
-  color: #222222;
+  color: #F08080;
+  font-weight: bold;
+  text-align: center;
+  margin-bottim: 10px
   letter-spacing: 4px;
+}
+
+h4.author, h4.date {
+  text-align: center;
+  color: #F89880; 
+  margin-bottom: 10px;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  color: #FF8674; 
 }
 
 .fig {width: 50%}
@@ -54,8 +70,7 @@ h1.title {
 
 
 :::{.question_box}
-
-**INTRODUCTION: **
+## INTRODUCTION
 
 You are a bioinformatician working for a company that provides scientific, statistical and bioinformatic consulting services. A customer from a very important sherry wine trade company wants to **understand the differences between strains of Saccharomyces cerevisiae for different sherry wines products that they elaborate**.
 
@@ -156,7 +171,7 @@ library(ggfortify)
 
 ggplot2::autoplot(pca1, data = metadata, colour = 'SherryWine') +
   ggplot2::theme_minimal() +
-  ggplot2::ggtitle("PCA scaled")
+  ggplot2::ggtitle("PCA scaled") 
 
 ggplot2::autoplot(pca2, data = metadata, colour = 'SherryWine') +
   ggplot2::theme_minimal() +
@@ -278,15 +293,21 @@ Finally, the graph between PC1 and Replicates looks pretty similar to the one be
 
 ### REPRESENT THE DATA WITH A TSNE
 
-```{r}
+tSNE is a technique used to reduce dimensionality of data. PCA is used with the same goal, but it has some cons, such as projecting the data focusing on keeping separated the distant points, and not taking into account that it should keep close points together. Also it is not suitable for non-linear data. 
+tSNE is a non-linear feature extraction, it is an algorithm that tries to embed the points from a higher dimension to a lower dimension trying to preserve the neighborhood of that point (from the slides). 
 
+We will now apply it to our datasets, raw data and normalized data. We will set the perplexity parameter (says how to balance attention between local and global aspects of your data) to 15 since the default value is 30 and it does not work with the dimension of the datasets. 
+
+To allow the plots to be reproducible we will set a seed when calling the Rtsne function (in this case to 42).
+
+```{r}
 set.seed(42)
 library("Rtsne")
 tsne1 <-Rtsne(final_df2, perplexity=15)
 tsne2 <- Rtsne(norm_df2, perplexity=15)
 ```
 
-He fet els gràfics però s'han de comentar (batch effect i diferència entre gràfic normalitzat i raw data)
+To interpret the tSNE's properly, we will plot the data. To make the plots more easilly I have decided to create dataframes with the data necessary for the plots (everything tidier and more accessible).
 
 ```{r}
 plotdata1 <- data.frame(
@@ -298,13 +319,13 @@ plotdata1 <- data.frame(
 
 ggplot(plotdata1, aes(x = tSNE1, y = tSNE2, color = Replicate)) +
   geom_point() + 
-    labs(title = "tSNE plot - raw data",
+    labs(title = "tSNE plot - raw data by Replicate",
        x = "tSNE1",
        y = "tSNE2") +  theme_minimal() 
 
 ggplot(plotdata1, aes(x = tSNE1, y = tSNE2, color = WineType)) +
   geom_point() + 
-    labs(title = "tSNE plot - raw data",
+    labs(title = "tSNE plot - raw data by Wine Type",
        x = "tSNE1",
        y = "tSNE2") +  theme_minimal() 
 
@@ -324,5 +345,204 @@ ggplot(plotdata2, aes(x = tSNE1, y = tSNE2, color = WineType)) +
 
 ```
 
+After trying all possible graphs to see whether there might be a batch effect or not, we have decided to show these ones. 
+
+The first graph corresponding to the Raw Data colored by the Replicate shows 4 separate regions based on the Replicate number. This might indicate sequencing differences. To confirm if this is a batch effect we use the normalized data, since it is not technically biased. With this method we can conclude that the batch effect does not show anymore (samples are separated uniquely by Wine Type, reaffirming a possible biological difference among the 2 flor yeast strains). 
+
+### CORRELATION OF AXIS WITH EXPRESSION
+
+To follow with the study, we will do as in the PCA dimensionality reduction, we will try to identify if there is an axis correlation with expression. This time we will do it in a different way, since tSNE is a non-linear method, and the axes do not explain the percentage of variance (as in the PCA). We will be analyzing the possible correlation from the graphs (normalized data). Since the normalized data graph is pretty simple, with the Wine Type A samples at the top left part of the grid and Wine Type B diagonally placed (bottom right), we cannot say it is strongly correlated with the axis (tSNE1 or tSNE2) as we saw in the PCA since there are just 2 groups of samples depending on the Wine Type. What we can actually say is that the tSNE is strongly associated with the WineType (categorical variable), as it shows by the differenciated groups in the graph. 
+Once again, the clusters shown may not actually explain a linear correlation but they do show transcriptomic differences between strains of Saccharomyces cerevisiae.
+
+## QUESTION 4: tSNE parameters
+
+As we did in the tSNE practical, we will now test how different values for Perplexity, Iterations and Reproducibility work on the dimensionality reduction of the data using the tSNE method. 
+
+If we check help("Rtsne"), we can see the default values. They are 30 for Perplexity (as mentioned before), 1000 for Iterations and Reproducibility is a changes every single time (tSNE is stochastic, it requires a random number to start the analysis). 
+
+### PERPLEXITY
+
+I will start exploring the parameter "perplexity" and using plots to see the differences more clearly. 
+
+```{r}
+
+tsne3 <- Rtsne(norm_df2, perplexity=1)
+tsne4 <- Rtsne(norm_df2, perplexity=15)
+
+plotdata3 <- data.frame(
+  tSNE1 = tsne3$Y[, 1],        
+  tSNE2 = tsne3$Y[, 2],          
+  WineType = metadata$SherryWine,  
+  Time = metadata$Time, 
+  Replicate = metadata$Replicate)
+
+ggplot(plotdata3, aes(x = tSNE1, y = tSNE2, color = Time)) +
+  geom_point() + 
+    labs(title = "tSNE plot - perplexity = 1",
+       x = "tSNE1",
+       y = "tSNE2") +  theme_minimal() 
+
+plotdata4 <- data.frame(
+  tSNE1 = tsne4$Y[, 1],          
+  tSNE2 = tsne4$Y[, 2],          
+  WineType = metadata$SherryWine,  
+  Time = metadata$Time,
+  Replicate = metadata$Replicate)
+
+ggplot(plotdata4, aes(x = tSNE1, y = tSNE2, color = WineType)) +
+  geom_point() + 
+    labs(title = "tSNE plot - perplexity=15",
+       x = "tSNE1",
+       y = "tSNE2") +  theme_minimal() 
 
 
+```
+
+The lowest value I use is 1 and the highest is 15, since for this dataframe the tSNE can't be performed for higher values. 
+
+For the perplexity = 1 plot, we can see that the values appear much very distributed along the grid, clustered in groups of 4 (after checking every part of the metadata table, I have seen that the subgroups depend on the Time variable).
+For perplexity = 15, it is clear that we have 2 determined groups in diagonal depending on the Wine Type. Data is not distributed, there are 2 groups. 
+
+I have also checked for perplexity = 7, which is an intermediate value. The distribution of the samples looks much more similar to perplexity = 1 than 15. Data is distributed but grouped by Time. When trying values of perplexity like 9 or higher, the samples start being separated to the diagonals depending on they Type of strains. 
+
+### ITERATIONS
+
+We will keep on by exploring different values of max_iter. 
+
+```{r}
+tsne5 <- Rtsne(norm_df2, perplexity=15, max_iter=10)
+tsne6 <- Rtsne(norm_df2, perplexity=15, max_iter=100)
+tsne7 <- Rtsne(norm_df2, perplexity=15, max_iter=1000)
+
+plotdata5 <- data.frame(
+  tSNE1 = tsne5$Y[, 1],        
+  tSNE2 = tsne5$Y[, 2],          
+  WineType = metadata$SherryWine,  
+  Time = metadata$Time, 
+  Replicate = metadata$Replicate)
+
+ggplot(plotdata5, aes(x = tSNE1, y = tSNE2, color = WineType)) +
+  geom_point() + 
+    labs(title = "tSNE plot - iterations = 10",
+       x = "tSNE1",
+       y = "tSNE2") +  theme_minimal() 
+
+plotdata6 <- data.frame(
+  tSNE1 = tsne6$Y[, 1],          
+  tSNE2 = tsne6$Y[, 2],          
+  WineType = metadata$SherryWine,  
+  Time = metadata$Time,
+  Replicate = metadata$Replicate)
+
+ggplot(plotdata6, aes(x = tSNE1, y = tSNE2, color = WineType)) +
+  geom_point() + 
+    labs(title = "tSNE plot - iterations = 100",
+       x = "tSNE1",
+       y = "tSNE2") +  theme_minimal() 
+
+plotdata7 <- data.frame(
+  tSNE1 = tsne7$Y[, 1],          
+  tSNE2 = tsne7$Y[, 2],          
+  WineType = metadata$SherryWine,  
+  Time = metadata$Time,
+  Replicate = metadata$Replicate)
+
+ggplot(plotdata7, aes(x = tSNE1, y = tSNE2, color = WineType)) +
+  geom_point() + 
+    labs(title = "tSNE plot - iterations = 1000",
+       x = "tSNE1",
+       y = "tSNE2") +  theme_minimal() 
+
+```
+
+I have decided to check the iteration values 10, 100 and 1000. 
+It can be easily seen from the graphs how the more iterations the less overlapping there is between samples of different Wine Type. The more iterations, the more clustered the data appears. 
+
+### REPRODUCIBILITY 
+The last parameter left to explore is reproducibility:
+
+```{r}
+set.seed(10)
+tsne8 <- Rtsne(norm_df2, perplexity=15)
+set.seed(100)
+tsne9 <- Rtsne(norm_df2, perplexity=15)
+set.seed(1000)
+tsne10 <- Rtsne(norm_df2, perplexity=15)
+
+plotdata8 <- data.frame(
+  tSNE1 = tsne8$Y[, 1],        
+  tSNE2 = tsne8$Y[, 2],          
+  WineType = metadata$SherryWine,  
+  Time = metadata$Time, 
+  Replicate = metadata$Replicate)
+
+ggplot(plotdata8, aes(x = tSNE1, y = tSNE2, color = WineType)) +
+  geom_point() + 
+    labs(title = "tSNE plot - seed = 10",
+       x = "tSNE1",
+       y = "tSNE2") +  theme_minimal() 
+
+plotdata9 <- data.frame(
+  tSNE1 = tsne9$Y[, 1],          
+  tSNE2 = tsne9$Y[, 2],          
+  WineType = metadata$SherryWine,  
+  Time = metadata$Time,
+  Replicate = metadata$Replicate)
+
+ggplot(plotdata9, aes(x = tSNE1, y = tSNE2, color = WineType)) +
+  geom_point() + 
+    labs(title = "tSNE plot - seed = 100",
+       x = "tSNE1",
+       y = "tSNE2") +  theme_minimal() 
+
+plotdata10 <- data.frame(
+  tSNE1 = tsne10$Y[, 1],          
+  tSNE2 = tsne10$Y[, 2],          
+  WineType = metadata$SherryWine,  
+  Time = metadata$Time,
+  Replicate = metadata$Replicate)
+
+ggplot(plotdata10, aes(x = tSNE1, y = tSNE2, color = WineType)) +
+  geom_point() + 
+    labs(title = "tSNE plot - seed = 1000",
+       x = "tSNE1",
+       y = "tSNE2") +  theme_minimal() 
+
+```
+To see how the reproducibility affects the tSNE's, I have used set.seed(), to choose which value did I want and have it set so that it did not change every time me or anyone else ran it (have the same starting point). As it appears in the graphs, there is no pattern for reproducibility, in contrast to perplexity or iterations. It changes everytime, given that tSNE is not a deterministic algorithm (such as PCA). It follows a random probability distribution (stochastic), so there is a part that is not under "control". 
+
+## QUESTION 5: Final interpretation
+
+### FINAL REPRESENTATIONS
+
+I will start by giving the plot that from our point of view better represents the PCA, which is the one made from normalized data without the outlier and colored by Wine Type (it helps explain the genetic differences between sherry wine yeast strains). 
+
+```{r}
+ggplot2::autoplot(pca4, data = metadata, colour = 'SherryWine') +
+  ggplot2::theme_minimal() +
+  ggplot2::ggtitle("PCA - normalized data - by Wine Type")
+
+```
+
+For the tSNE, the best plot I think that is the one from normalized data and colored by Wine Type as well. We will set perplexity=15 since it is the most optimal in this case. 
+
+```{r}
+ggplot(plotdata2, aes(x = tSNE1, y = tSNE2, color = WineType)) +
+  geom_point() + 
+    labs(title = "tSNE plot - normalized data",
+       x = "tSNE1",
+       y = "tSNE2") +  theme_minimal() 
+
+```
+
+In our opinion, these graphs are the ones that better represent the whole project (clean data without the outlier, PCA from normalized data and tSNE with a proper Perplexity value, showing the differences between flor yeast strains, which was the whole goal of the assignment). 
+
+### CONCLUSIONS PC1, PC2
+
+After performing the PCA without the outlier and with the normalized data, we have identified that most of the variance of the dataset is explained by PC1 (as it appears in the graph), and seggregates the 2 Wine Kinds, which supports the hypothesis of the genetic differences between the 2 yeast strains being the reason of the taste differences between Wine Types. 
+When it comes to PC2, it explains a much smaller percentage of the variance but it has a correlation with the variable Time. It explains how the flor yeast velum adapts to the biological aging process of wine, as it was explained in the presentation of the dataset. 
+
+
+### CONCLUSIONS
+
+After starting to plot the dataset, we identified an outlier and valued the decision to remove it or not, which turned out to be a yes. There was a significant difference between that sample and the others, and we thought that the best was to take it apart from the study. This methods have provided us proofs of what we expected, that there are biological/genetic differences between the strains of Saccharomyces cerevisiae that provide those different tastes in the Wine produced. These microbial agents that help provoke wine aging conduct the biological differences between the 2 Wine Types (A and B), and this is confirmed by the PCA and the tSNE (dimension reduction techniques). The normalization process has helped to better understand the data without any possible bias. 
