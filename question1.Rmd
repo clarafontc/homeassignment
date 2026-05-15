@@ -24,21 +24,22 @@ knitr::opts_chunk$set(echo = TRUE, fig.width = 6, fig.height = 4, fig.align = "c
 }
 
 h1.title {
-  color: #F08080;
+  color: #872657;
   font-weight: bold;
   text-align: center;
-  margin-bottim: 10px
+  margin-bottom: 10px
   letter-spacing: 4px;
 }
 
 h4.author, h4.date {
   text-align: center;
-  color: #F89880; 
+  color: #7F525D; 
   margin-bottom: 10px;
 }
 
 h1, h2, h3, h4, h5, h6 {
-  color: #FF8674; 
+  color: #550A35; 
+  font-weight: bold;
 }
 
 .fig {width: 50%}
@@ -60,7 +61,7 @@ h1, h2, h3, h4, h5, h6 {
   padding: 1em;
   background: white;
   color: black;
-  border: 2px solid plum;
+  border: 2px solid #033E3E;
   border-radius: 10px;
   margin-bottom: 10px;
 }
@@ -91,10 +92,10 @@ Your **goal** in this project is to decipher by applying dimension reduction tec
 ### LOADING THE DATA
 
 ``` {r}
-rep1 <- read.csv(file.path("/home/clarafontc/homeassignment/", "rep1.csv"), header=TRUE)
-rep2 <- read.csv(file.path("/home/clarafontc/homeassignment/", "rep2.csv"), header=TRUE)
-rep3 <- read.csv(file.path("/home/clarafontc/homeassignment/", "rep3.csv"), header=TRUE)
-rep4 <- read.csv(file.path("/home/clarafontc/homeassignment/", "rep4.csv"), header=TRUE)
+rep1 <- read.csv(file.path("rep1.csv"), header=TRUE)
+rep2 <- read.csv(file.path("rep2.csv"), header=TRUE)
+rep3 <- read.csv(file.path("rep3.csv"), header=TRUE)
+rep4 <- read.csv(file.path("rep4.csv"), header=TRUE)
 
 ```
 
@@ -219,13 +220,14 @@ metadata <- metadata[metadata$Sample!="B.t1_rep3", ]
 
 #performing the normalized pca again
 pca4 <- stats::prcomp(norm_df2, scale=TRUE)
+summary(pca4)
 
 ggplot2::autoplot(pca4, data = metadata, colour = 'SherryWine') +
   ggplot2::theme_minimal() +
   ggplot2::ggtitle("PCA - normalized data - by Wine Type")
 ```
 
-We can see how the data appears less clustered since the PCA has worked properly with the normalized data. Removing the outlier has been a correct choice. 
+We can see how the data appears less clustered since the PCA has worked properly with the normalized data. Removing the outlier has been a correct choice. Using summary(pca4) we can appreciate the percentage of variance each PC explains. PC1 explains 65.1%, PC2 6.98%, PC3 3.52% etc. 
 
 ### BATCH EFFECT
 
@@ -307,9 +309,22 @@ tsne1 <-Rtsne(final_df2, perplexity=15)
 tsne2 <- Rtsne(norm_df2, perplexity=15)
 ```
 
-To interpret the tSNE's properly, we will plot the data. To make the plots more easilly I have decided to create dataframes with the data necessary for the plots (everything tidier and more accessible).
+To interpret the tSNE's properly, we will plot the data. To make the plots more easilly I have decided to create dataframes with the data necessary for the plots (everything tidier and more accessible) and then to make it more efficient I will perform the plots using a function.
 
 ```{r}
+plot_tsne <- function(data, color_var, title){
+  ggplot(data,
+         aes(x = tSNE1,
+             y = tSNE2,
+             color = .data[[color_var]])) +
+    geom_point() +
+    labs(title = title,
+         x = "tSNE1",
+         y = "tSNE2",
+         color = color_var) + theme_minimal()
+}
+
+
 plotdata1 <- data.frame(
   tSNE1 = tsne1$Y[, 1],          
   tSNE2 = tsne1$Y[, 2],          
@@ -317,18 +332,17 @@ plotdata1 <- data.frame(
   Time = metadata$Time, 
   Replicate = metadata$Replicate)
 
-ggplot(plotdata1, aes(x = tSNE1, y = tSNE2, color = Replicate)) +
-  geom_point() + 
-    labs(title = "tSNE plot - raw data by Replicate",
-       x = "tSNE1",
-       y = "tSNE2") +  theme_minimal() 
+plot_tsne(
+  data = plotdata1,
+  color_var = "Replicate",
+  title = "tSNE plot - raw data by Replicate"
+)
 
-ggplot(plotdata1, aes(x = tSNE1, y = tSNE2, color = WineType)) +
-  geom_point() + 
-    labs(title = "tSNE plot - raw data by Wine Type",
-       x = "tSNE1",
-       y = "tSNE2") +  theme_minimal() 
-
+plot_tsne(
+  data = plotdata1,
+  color_var = "WineType",
+  title = "tSNE plot - raw data by Wine Type"
+)
 
 plotdata2 <- data.frame(
   tSNE1 = tsne2$Y[, 1],          
@@ -337,11 +351,11 @@ plotdata2 <- data.frame(
   Time = metadata$Time,
   Replicate = metadata$Replicate)
 
-ggplot(plotdata2, aes(x = tSNE1, y = tSNE2, color = WineType)) +
-  geom_point() + 
-    labs(title = "tSNE plot - normalized data",
-       x = "tSNE1",
-       y = "tSNE2") +  theme_minimal() 
+plot_tsne(
+  data = plotdata2,
+  color_var = "WineType",
+  title = "tSNE plot - normalized data"
+)
 
 ```
 
@@ -376,11 +390,10 @@ plotdata3 <- data.frame(
   Time = metadata$Time, 
   Replicate = metadata$Replicate)
 
-ggplot(plotdata3, aes(x = tSNE1, y = tSNE2, color = Time)) +
-  geom_point() + 
-    labs(title = "tSNE plot - perplexity = 1",
-       x = "tSNE1",
-       y = "tSNE2") +  theme_minimal() 
+plot_tsne(
+  data = plotdata3,
+  color_var = "Time",
+  title = "tSNE plot - perplexity = 1")
 
 plotdata4 <- data.frame(
   tSNE1 = tsne4$Y[, 1],          
@@ -389,19 +402,18 @@ plotdata4 <- data.frame(
   Time = metadata$Time,
   Replicate = metadata$Replicate)
 
-ggplot(plotdata4, aes(x = tSNE1, y = tSNE2, color = WineType)) +
-  geom_point() + 
-    labs(title = "tSNE plot - perplexity=15",
-       x = "tSNE1",
-       y = "tSNE2") +  theme_minimal() 
+plot_tsne(
+  data = plotdata4,
+  color_var = "WineType",
+  title = "tSNE plot - perplexity = 15")
 
 
 ```
 
 The lowest value I use is 1 and the highest is 15, since for this dataframe the tSNE can't be performed for higher values. 
 
-For the perplexity = 1 plot, we can see that the values appear much very distributed along the grid, clustered in groups of 4 (after checking every part of the metadata table, I have seen that the subgroups depend on the Time variable).
-For perplexity = 15, it is clear that we have 2 determined groups in diagonal depending on the Wine Type. Data is not distributed, there are 2 groups. 
+For the perplexity = 1 plot, we can see that the values appear very distributed along the grid, clustered in groups of 4 (after checking every part of the metadata table, I have seen that the subgroups depend on the Time variable).
+For perplexity = 15, it is clear that we have 2 determined groups in diagonal depending on the Wine Type. Data is not distributed, there are 2 groups. The "neighborhoods" depending on the variable Time do not appear anymore (not locally separated as before, more globally). 
 
 I have also checked for perplexity = 7, which is an intermediate value. The distribution of the samples looks much more similar to perplexity = 1 than 15. Data is distributed but grouped by Time. When trying values of perplexity like 9 or higher, the samples start being separated to the diagonals depending on they Type of strains. 
 
@@ -421,11 +433,10 @@ plotdata5 <- data.frame(
   Time = metadata$Time, 
   Replicate = metadata$Replicate)
 
-ggplot(plotdata5, aes(x = tSNE1, y = tSNE2, color = WineType)) +
-  geom_point() + 
-    labs(title = "tSNE plot - iterations = 10",
-       x = "tSNE1",
-       y = "tSNE2") +  theme_minimal() 
+plot_tsne(
+  data = plotdata5,
+  color_var = "WineType",
+  title = "tSNE plot - iterations = 10")
 
 plotdata6 <- data.frame(
   tSNE1 = tsne6$Y[, 1],          
@@ -434,11 +445,10 @@ plotdata6 <- data.frame(
   Time = metadata$Time,
   Replicate = metadata$Replicate)
 
-ggplot(plotdata6, aes(x = tSNE1, y = tSNE2, color = WineType)) +
-  geom_point() + 
-    labs(title = "tSNE plot - iterations = 100",
-       x = "tSNE1",
-       y = "tSNE2") +  theme_minimal() 
+plot_tsne(
+  data = plotdata6,
+  color_var = "WineType",
+  title = "tSNE plot - iterations = 100")
 
 plotdata7 <- data.frame(
   tSNE1 = tsne7$Y[, 1],          
@@ -447,11 +457,10 @@ plotdata7 <- data.frame(
   Time = metadata$Time,
   Replicate = metadata$Replicate)
 
-ggplot(plotdata7, aes(x = tSNE1, y = tSNE2, color = WineType)) +
-  geom_point() + 
-    labs(title = "tSNE plot - iterations = 1000",
-       x = "tSNE1",
-       y = "tSNE2") +  theme_minimal() 
+plot_tsne(
+  data = plotdata7,
+  color_var = "WineType",
+  title = "tSNE plot - iterations = 1000")
 
 ```
 
@@ -476,11 +485,10 @@ plotdata8 <- data.frame(
   Time = metadata$Time, 
   Replicate = metadata$Replicate)
 
-ggplot(plotdata8, aes(x = tSNE1, y = tSNE2, color = WineType)) +
-  geom_point() + 
-    labs(title = "tSNE plot - seed = 10",
-       x = "tSNE1",
-       y = "tSNE2") +  theme_minimal() 
+plot_tsne(
+  data = plotdata8,
+  color_var = "WineType",
+  title = "tSNE plot - seed = 10")
 
 plotdata9 <- data.frame(
   tSNE1 = tsne9$Y[, 1],          
@@ -489,11 +497,10 @@ plotdata9 <- data.frame(
   Time = metadata$Time,
   Replicate = metadata$Replicate)
 
-ggplot(plotdata9, aes(x = tSNE1, y = tSNE2, color = WineType)) +
-  geom_point() + 
-    labs(title = "tSNE plot - seed = 100",
-       x = "tSNE1",
-       y = "tSNE2") +  theme_minimal() 
+plot_tsne(
+  data = plotdata9,
+  color_var = "WineType",
+  title = "tSNE plot - seed = 100")
 
 plotdata10 <- data.frame(
   tSNE1 = tsne10$Y[, 1],          
@@ -502,11 +509,10 @@ plotdata10 <- data.frame(
   Time = metadata$Time,
   Replicate = metadata$Replicate)
 
-ggplot(plotdata10, aes(x = tSNE1, y = tSNE2, color = WineType)) +
-  geom_point() + 
-    labs(title = "tSNE plot - seed = 1000",
-       x = "tSNE1",
-       y = "tSNE2") +  theme_minimal() 
+plot_tsne(
+  data = plotdata10,
+  color_var = "WineType",
+  title = "tSNE plot - seed = 1000")
 
 ```
 To see how the reproducibility affects the tSNE's, I have used set.seed(), to choose which value did I want and have it set so that it did not change every time me or anyone else ran it (have the same starting point). As it appears in the graphs, there is no pattern for reproducibility, in contrast to perplexity or iterations. It changes everytime, given that tSNE is not a deterministic algorithm (such as PCA). It follows a random probability distribution (stochastic), so there is a part that is not under "control". 
